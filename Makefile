@@ -33,6 +33,9 @@
 SHELL=/bin/bash
 INSTALL= install
 BINMODE=0555
+RM= rm
+CP= cp
+CHMOD= chmod
 
 DESTBIN=/usr/local/bin
 
@@ -41,24 +44,24 @@ TARGETS= rsyncfrom rsyncto rsrcpush rmake
 all: ${TARGETS}
 
 rsyncfrom: rsyncfrom.sh
-	-rm -f $@
-	cp $@.sh $@
-	chmod +x $@
+	${RM} -f $@
+	${CP} $@.sh $@
+	${CHMOD} +x $@
 
 rsyncto: rsyncto.sh
-	-rm -f $@
-	cp $@.sh $@
-	chmod +x $@
+	${RM} -f $@
+	${CP} $@.sh $@
+	${CHMOD} +x $@
 
 rsrcpush: rsrcpush.sh
-	-rm -f $@
-	cp $@.sh $@
-	chmod +x $@
+	${RM} -f $@
+	${CP} $@.sh $@
+	${CHMOD} +x $@
 
 rmake: rmake.sh
-	-rm -f $@
-	cp $@.sh $@
-	chmod +x $@
+	${RM} -f $@
+	${CP} $@.sh $@
+	${CHMOD} +x $@
 
 # local rules
 #
@@ -68,4 +71,4 @@ install: all
 clean:
 
 clobber: clean
-	-rm -f ${TARGETS}
+	${RM} -f ${TARGETS}
