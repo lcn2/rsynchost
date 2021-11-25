@@ -39,7 +39,7 @@ CHMOD= chmod
 
 DESTBIN=/usr/local/bin
 
-TARGETS= rsyncfrom rsyncto rsrcpush rmake
+TARGETS= rsyncfrom rsyncto
 
 all: ${TARGETS}
 
@@ -49,16 +49,6 @@ rsyncfrom: rsyncfrom.sh
 	${CHMOD} +x $@
 
 rsyncto: rsyncto.sh
-	${RM} -f $@
-	${CP} $@.sh $@
-	${CHMOD} +x $@
-
-rsrcpush: rsrcpush.sh
-	${RM} -f $@
-	${CP} $@.sh $@
-	${CHMOD} +x $@
-
-rmake: rmake.sh
 	${RM} -f $@
 	${CP} $@.sh $@
 	${CHMOD} +x $@
