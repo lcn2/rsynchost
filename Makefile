@@ -36,6 +36,7 @@ BINMODE=0555
 RM= rm
 CP= cp
 CHMOD= chmod
+SHELLCHECK= shellcheck
 
 DESTBIN=/usr/local/bin
 
@@ -55,6 +56,9 @@ rsyncto: rsyncto.sh
 
 # local rules
 #
+shellcheck: rsyncfrom.sh rsyncto.sh
+	${SHELLCHECK} -f gcc -- rsyncfrom.sh rsyncto.sh
+
 install: all
 	${INSTALL} -c -m ${BINMODE} ${TARGETS} ${DESTBIN}
 
