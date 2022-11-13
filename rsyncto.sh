@@ -28,54 +28,55 @@
 
 # parse args
 #
-export RSYNCTO_VERSION="1.19 2022-11-11"
-USAGE="usage: $0 [-h] [-q] [-v] [-V] [-C] [-d] [-E] [-f] [-k] [-m] [-n] [-p num] [-P num] [-u] [-x] [-z] dir [user@]host[:dest]
+export RSYNCTO_VERSION="1.20 2022-11-12"
+USAGE="rsyncto - rsync from a local directory to a remote host
 
-	-h	print help and exit
-	-q	quiet operation
-	-v	verbose output, showing the progress of the transfer, print transfer stats
-	-V	print version and exit
+usage: $0 [-options ...] src [user@]host[:dest]
 
-	-C	exclude RCS, CVS, tmp, .o, .a, .so, .Z, .orig, .rej, .BAK ...
-	-d	transfer directories without recursing
-	-E	macOS only: copy extended attributes and enable filesystem caching (def: don't)
-	-f	force deletion of dirs even if not empty
-	-k	keep all files in the remote host, do not delete anything
-	-m	prune empty directory chains from file-list
-	-n	trial run, transfer nothing
-	-p num	Change the ssh TCP port to num (default: 22)
-	-P num	alias for -p num (default: 22)
-	-u	skip files that are newer on the remote host
-	-x	not to cross filesystem boundaries
+	-a	resolve directories to an absolute path from / (def: use directory paths as is)
+	-C	rsync will exclude a broad range of files that you often don't want to transfer (def: don't exclude)
+	-d	transfer directories without recursing (def: recursively transfer the directory tree)
+	-E	macOS only: copy extended attributes, resource forks, enable filesystem caching (def: don't)
+	-f	delete a non-empty directory when it is to be replaced by a non-directory (def: don't)
+	-h	print help and exit (def: don't)
+	-k	keep all files in the destination, do not delete anything (def: delete as needed)
+	-m	prune empty directory chains from file-list (def: don't)
+	-n		trial run: transfer nothing, do not remove nor create anything, test rsync with -n (def: do as needed)
+	-p port		use ssh over TCP port (def: 22)
+	-P port		alias for -p num (def: 22)
+	-q		quiet operation (def: normal output)
+	-s		skip creating files and directories that do not exist on the destination (def: create as needed)
+	-S		skip creating files and directories that already exist on the destination (def: create as needed)
+	-t tool=path	use tool from path where tool may be one of: hostname ssh rsync dirname basename (def: use well known path)
+	-u		skip files that are newer in the destination (def: don't)
+	-x	do not cross filesystem boundaries when recursing (def: do)
+	-v	verbose output, show progress of transfer, print transfer stats (def: normal output, no progress nor stat info)
+	-V	print version and exit (def: don't)
 	-z	compress via ssh, not via rsync (def: compress via rsync only)
 
-	dir	directory on current host to transfer
+	src	source of current host to transfer
 	user	copy as user on remote host (def: current user)
 	host	host to transfer to
-	dest	destination directory on the remote host (def: dir)
+	dest	destination directory on the remote host (def: use src)
 
-rsyncto: rsync a local directory to a remote host
+See rsyncto(1) man page for more details.
 
 Exit codes:
      0      all is well
-
      1-89   rsync error
-
     92	    help mode or print version
     93	    invalid command line
-
     94	    already on remote host
-    95	    cannot determine the parent directory of dir
-    96	    cannot cd to parent directory of dir
-    97	    dir not found
-    98	    cannot determine basename of dir
-
+    95	    cannot determine the parent directory of src
+    96	    cannot cd to parent directory of src
+    97	    src not found
+    98	    cannot determine basename of src
    100-109  critical tool not executable or not found
-
  >=110      internal error
 
 $0: version: $RSYNCTO_VERSION"
-C_FLAG=
+A_FLAG=
+CAP_C_FLAG=
 D_FLAG=
 CAP_E_FLAG=
 F_FLAG=
@@ -84,14 +85,23 @@ M_FLAG=
 N_FLAG=
 P_FLAG="22"
 Q_FLAG=
+S_FLAG=
+CAP_S_FLAG=
 U_FLAG=
 V_FLAG=
 X_FLAG=
 Z_FLAG=
-export C_FLAG D_FLAG F_FLAG CAP_E_FLAG K_FLAG M_FLAG N_FLAG P_FLAG Q_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
-while getopts :CdEfhkmnp:P:quxvVz flag; do
+export A_FLAG CAP_C_FLAG D_FLAG CAP_E_FLAG F_FLAG K_FLAG M_FLAG N_FLAG P_FLAG Q_FLAG S_FLAG CAP_S_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
+HOSTNAME_PATH=
+SSH_PATH=
+RSYNC_PATH=
+DIRNAME_PATH=
+BASENAME_PATH=
+export HOSTNAME_PATH SSH_PATH RSYNC_PATH DIRNAME_PATH BASENAME_PATH
+while getopts :aCdEfhkmnp:P:qsSt:uxvVz flag; do
     case "$flag" in
-    C) C_FLAG="true" ;;
+    a) A_FLAG="true" ;;
+    C) CAP_C_FLAG="true" ;;
     d) D_FLAG="true" ;;
     E) CAP_E_FLAG="true" ;;
     f) F_FLAG="true" ;;
@@ -104,6 +114,29 @@ while getopts :CdEfhkmnp:P:quxvVz flag; do
     p) P_FLAG="$OPTARG"; ;;
     P) P_FLAG="$OPTARG"; ;;
     q) Q_FLAG="true" ;;
+    s) S_FLAG="true" ;;
+    S) CAP_S_FLAG="true" ;;
+    t) case "$OPTARG" in
+       hostname=*)
+           HOSTNAME_PATH=${OPTARG##hostname=}
+	   ;;
+       ssh=*)
+           SSH_PATH=${OPTARG##ssh=}
+	   ;;
+       rsync=*)
+           RSYNC_PATH=${OPTARG##rsync=}
+	   ;;
+       dirname=*)
+           DIRNAME_PATH=${OPTARG##dirname=}
+	   ;;
+       basename=*)
+           BASENAME_PATH=${OPTARG##basename=}
+	   ;;
+       *)  echo "$0: ERROR: -t option not of the form tool=path where tool is one of: hostname ssh rsync dirname basename" 1>&2
+           exit 93;
+           ;;
+       esac
+       ;;
     u) U_FLAG="true" ;;
     v) V_FLAG="true" ;;
     V) echo "$RSYNCTO_VERSION";
@@ -115,7 +148,7 @@ while getopts :CdEfhkmnp:P:quxvVz flag; do
 	exit 93;
 	;;
     :)  echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2;
-	exit 93
+	exit 93;
 	;;
     *)
 	;;
@@ -126,14 +159,18 @@ if [[ $# != 2 ]]; then
     echo "$0: ERROR: $USAGE" 1>&2
     exit 93
 fi
+if [[ -n $F_FLAG && -n $K_FLAG ]]; then
+    echo "$0: ERROR: -f and -k conflict and cannot be used together" 1>&2
+    exit 93
+fi
 SRC="$1"
 case "$2" in
 *:*) USERHOST=${2%%:*}; DEST_PATH=${2##*:}; ;;
-*) USERHOST="$2"; DEST_PATH= ;;	# empty DEST_PATH will become SRC_FULL_PATH
+*) USERHOST="$2"; DEST_PATH= ;;	# empty DEST_PATH will become DIR_OF_SRC_PATH
 esac
 export SRC USERHOST DEST_PATH
 
-# firewall - only use commands from trusted directories
+# firewall - only use commands from trusted directories, unless -t tool=path is used
 #
 # Because we might want to run this command as a privileged user, we only
 # use commands from explicit paths from well known system directories.
@@ -142,109 +179,193 @@ export SRC USERHOST DEST_PATH
 # because $HOST is not universally set and may be incorrectly set.
 #
 # We use the basename command instead of bash variable ${XYZZY##*/}
-# because we need a precise basename operation the dir argument
+# because we need a precise basename operation the src argument
 # contains an unusual path.
 #
 # We use the dirname command instead of bash variable ${XYZZY%/*}
-# because we need a precise dirname operation the dir argument
+# because we need a precise dirname operation the src argument
 # contains an unusual path.
 #
-if [[ -x "/bin/hostname" ]]; then
-    HOSTNAME_PROG="/bin/hostname"
-elif [[ -x "/usr/bin/hostname" ]]; then
-    HOSTNAME_PROG="/usr/bin/hostname"
-elif [[ -x "/usr/local/bin/hostname" ]]; then
-    HOSTNAME_PROG="/usr/local/bin/hostname"
-elif [[ -x "/sbin/hostname" ]]; then
-    HOSTNAME_PROG="/sbin/hostname"
-elif [[ -x "/usr/sbin/hostname" ]]; then
-    HOSTNAME_PROG="/usr/sbin/hostname"
-elif [[ -x "$HOME/bin/hostname" ]]; then
-    HOSTNAME_PROG="$HOME/bin/hostname"
-else
-    echo "$0: ERROR: cannot find hostname executable" 1>&2
+if [[ -z $HOSTNAME_PATH ]]; then
+    if [[ -x "/usr/bin/hostname" ]]; then
+	HOSTNAME_PATH="/usr/bin/hostname"
+    elif [[ -x "/bin/hostname" ]]; then
+	HOSTNAME_PATH="/bin/hostname"
+    elif [[ -x "/sbin/hostname" ]]; then
+	HOSTNAME_PATH="/sbin/hostname"
+    elif [[ -x "/usr/sbin/hostname" ]]; then
+	HOSTNAME_PATH="/usr/sbin/hostname"
+    elif [[ -x "/usr/local/bin/hostname" ]]; then
+	HOSTNAME_PATH="/usr/local/bin/hostname"
+    elif [[ -x "/usr/global/bin/hostname" ]]; then
+	HOSTNAME_PATH="/usr/global/bin/hostname"
+    elif [[ -x "$HOME/bin/hostname" ]]; then
+	HOSTNAME_PATH="$HOME/bin/hostname"
+    fi
+fi
+if [[ -z $HOSTNAME_PATH ]]; then
+    echo "$0: ERROR: executable hostname not found in the standard places: $HOSTNAME_PATH" 1>&2
+    exit 100
+elif [[ ! -e $HOSTNAME_PATH ]]; then
+    echo "$0: ERROR: hostname not found: $HOSTNAME_PATH" 1>&2
+    exit 100
+elif [[ ! -f $HOSTNAME_PATH ]]; then
+    echo "$0: ERROR: hostname a file: $HOSTNAME_PATH" 1>&2
+    exit 100
+elif [[ ! -x $HOSTNAME_PATH ]]; then
+    echo "$0: ERROR: hostname not executable: $HOSTNAME_PATH" 1>&2
     exit 100
 fi
-export HOSTNAME_PROG
-if [[ -x "/usr/bin/ssh" ]]; then
-    SSH_PROG="/usr/bin/ssh"
-elif [[ -x "/bin/ssh" ]]; then
-    SSH_PROG="/bin/ssh"
-elif [[ -x "/usr/local/bin/ssh" ]]; then
-    SSH_PROG="/usr/local/bin/ssh"
-elif [[ -x "/sbin/ssh" ]]; then
-    SSH_PROG="/sbin/ssh"
-elif [[ -x "/usr/sbin/ssh" ]]; then
-    SSH_PROG="/usr/sbin/ssh"
-elif [[ -x "$HOME/bin/ssh" ]]; then
-    SSH_PROG="$HOME/bin/ssh"
-else
-    echo "$0: ERROR: cannot find ssh executable" 1>&2
+export HOSTNAME_PATH
+#
+if [[ -z $SSH_PATH ]]; then
+    if [[ -x "/usr/bin/ssh" ]]; then
+	SSH_PATH="/usr/bin/ssh"
+    elif [[ -x "/bin/ssh" ]]; then
+	SSH_PATH="/bin/ssh"
+    elif [[ -x "/sbin/ssh" ]]; then
+	SSH_PATH="/sbin/ssh"
+    elif [[ -x "/usr/sbin/ssh" ]]; then
+	SSH_PATH="/usr/sbin/ssh"
+    elif [[ -x "/usr/local/bin/ssh" ]]; then
+	SSH_PATH="/usr/local/bin/ssh"
+    elif [[ -x "/usr/global/bin/ssh" ]]; then
+	SSH_PATH="/usr/global/bin/ssh"
+    elif [[ -x "$HOME/bin/ssh" ]]; then
+	SSH_PATH="$HOME/bin/ssh"
+    fi
+fi
+if [[ -z $SSH_PATH ]]; then
+    echo "$0: ERROR: executable ssh not found in the standard places: $SSH_PATH" 1>&2
+    exit 101
+elif [[ ! -e $SSH_PATH ]]; then
+    echo "$0: ERROR: ssh not found: $SSH_PATH" 1>&2
+    exit 101
+elif [[ ! -f $SSH_PATH ]]; then
+    echo "$0: ERROR: ssh a file: $SSH_PATH" 1>&2
+    exit 101
+elif [[ ! -x $SSH_PATH ]]; then
+    echo "$0: ERROR: ssh not executable: $SSH_PATH" 1>&2
     exit 101
 fi
-export SSH_PROG
-if [[ -x "/usr/bin/rsync" ]]; then
-    RSYNC_PROG="/usr/bin/rsync"
-elif [[ -x "/bin/rsync" ]]; then
-    RSYNC_PROG="/bin/rsync"
-elif [[ -x "/usr/local/bin/rsync" ]]; then
-    RSYNC_PROG="/usr/local/bin/rsync"
-elif [[ -x "/sbin/rsync" ]]; then
-    RSYNC_PROG="/sbin/rsync"
-elif [[ -x "/usr/sbin/rsync" ]]; then
-    RSYNC_PROG="/usr/sbin/rsync"
-elif [[ -x "$HOME/bin/rsync" ]]; then
-    RSYNC_PROG="$HOME/bin/rsync"
-else
-    echo "$0: ERROR: cannot find rsync executable" 1>&2
+export SSH_PATH
+#
+if [[ -z $RSYNC_PATH ]]; then
+    if [[ -x "/usr/bin/rsync" ]]; then
+	RSYNC_PATH="/usr/bin/rsync"
+    elif [[ -x "/bin/rsync" ]]; then
+	RSYNC_PATH="/bin/rsync"
+    elif [[ -x "/sbin/rsync" ]]; then
+	RSYNC_PATH="/sbin/rsync"
+    elif [[ -x "/usr/sbin/rsync" ]]; then
+	RSYNC_PATH="/usr/sbin/rsync"
+    elif [[ -x "/usr/local/bin/rsync" ]]; then
+	RSYNC_PATH="/usr/local/bin/rsync"
+    elif [[ -x "/usr/global/bin/rsync" ]]; then
+	RSYNC_PATH="/usr/global/bin/rsync"
+    elif [[ -x "$HOME/bin/rsync" ]]; then
+	RSYNC_PATH="$HOME/bin/rsync"
+    fi
+fi
+if [[ -z $RSYNC_PATH ]]; then
+    echo "$0: ERROR: executable rsync not found in the standard places: $RSYNC_PATH" 1>&2
+    exit 102
+elif [[ ! -e $RSYNC_PATH ]]; then
+    echo "$0: ERROR: rsync not found: $RSYNC_PATH" 1>&2
+    exit 102
+elif [[ ! -f $RSYNC_PATH ]]; then
+    echo "$0: ERROR: rsync a file: $RSYNC_PATH" 1>&2
+    exit 102
+elif [[ ! -x $RSYNC_PATH ]]; then
+    echo "$0: ERROR: rsync not executable: $RSYNC_PATH" 1>&2
     exit 102
 fi
-export RSYNC_PROG
-if [[ -x "/usr/bin/dirname" ]]; then
-    DIRNAME_PROG="/usr/bin/dirname"
-elif [[ -x "/bin/dirname" ]]; then
-    DIRNAME_PROG="/bin/dirname"
-elif [[ -x "/usr/local/bin/dirname" ]]; then
-    DIRNAME_PROG="/usr/local/bin/dirname"
-elif [[ -x "/sbin/dirname" ]]; then
-    DIRNAME_PROG="/sbin/dirname"
-elif [[ -x "/usr/sbin/dirname" ]]; then
-    DIRNAME_PROG="/usr/sbin/dirname"
-elif [[ -x "$HOME/bin/dirname" ]]; then
-    DIRNAME_PROG="$HOME/bin/dirname"
-else
-    echo "$0: ERROR: cannot find dirname executable" 1>&2
+export RSYNC_PATH
+#
+if [[ -z $DIRNAME_PATH ]]; then
+    if [[ -x "/usr/bin/dirname" ]]; then
+	DIRNAME_PATH="/usr/bin/dirname"
+    elif [[ -x "/bin/dirname" ]]; then
+	DIRNAME_PATH="/bin/dirname"
+    elif [[ -x "/sbin/dirname" ]]; then
+	DIRNAME_PATH="/sbin/dirname"
+    elif [[ -x "/usr/sbin/dirname" ]]; then
+	DIRNAME_PATH="/usr/sbin/dirname"
+    elif [[ -x "/usr/global/bin/dirname" ]]; then
+	DIRNAME_PATH="/usr/global/bin/dirname"
+    elif [[ -x "/usr/local/bin/dirname" ]]; then
+	DIRNAME_PATH="/usr/local/bin/dirname"
+    elif [[ -x "$HOME/bin/dirname" ]]; then
+	DIRNAME_PATH="$HOME/bin/dirname"
+    fi
+fi
+if [[ -z $DIRNAME_PATH ]]; then
+    echo "$0: ERROR: executable dirname not found in the standard places: $DIRNAME_PATH" 1>&2
+    exit 103
+elif [[ ! -e $DIRNAME_PATH ]]; then
+    echo "$0: ERROR: dirname not found: $DIRNAME_PATH" 1>&2
+    exit 103
+elif [[ ! -f $DIRNAME_PATH ]]; then
+    echo "$0: ERROR: dirname a file: $DIRNAME_PATH" 1>&2
+    exit 103
+elif [[ ! -x $DIRNAME_PATH ]]; then
+    echo "$0: ERROR: dirname not executable: $DIRNAME_PATH" 1>&2
     exit 103
 fi
-export DIRNAME_PROG
-if [[ -x "/bin/basename" ]]; then
-    BASENAME_PROG="/bin/basename"
-elif [[ -x "/usr/bin/basename" ]]; then
-    BASENAME_PROG="/usr/bin/basename"
-elif [[ -x "/usr/local/bin/basename" ]]; then
-    BASENAME_PROG="/usr/local/bin/basename"
-elif [[ -x "/sbin/basename" ]]; then
-    BASENAME_PROG="/sbin/basename"
-elif [[ -x "/usr/sbin/basename" ]]; then
-    BASENAME_PROG="/usr/sbin/basename"
-elif [[ -x "$HOME/bin/basename" ]]; then
-    BASENAME_PROG="$HOME/bin/basename"
-else
-    echo "$0: ERROR: cannot find basename executable" 1>&2
+export DIRNAME_PATH
+#
+if [[ -z $BASENAME_PATH ]]; then
+    if [[ -x "/usr/bin/basename" ]]; then
+	BASENAME_PATH="/usr/bin/basename"
+    elif [[ -x "/bin/basename" ]]; then
+	BASENAME_PATH="/bin/basename"
+    elif [[ -x "/sbin/basename" ]]; then
+	BASENAME_PATH="/sbin/basename"
+    elif [[ -x "/usr/sbin/basename" ]]; then
+	BASENAME_PATH="/usr/sbin/basename"
+    elif [[ -x "/usr/local/bin/basename" ]]; then
+	BASENAME_PATH="/usr/global/bin/basename"
+    elif [[ -x "/usr/global/bin/basename" ]]; then
+	BASENAME_PATH="/usr/local/bin/basename"
+    elif [[ -x "$HOME/bin/basename" ]]; then
+	BASENAME_PATH="$HOME/bin/basename"
+    fi
+fi
+if [[ -z $BASENAME_PATH ]]; then
+    echo "$0: ERROR: executable basename not found in the standard places: $BASENAME_PATH" 1>&2
+    exit 104
+elif [[ ! -e $BASENAME_PATH ]]; then
+    echo "$0: ERROR: basename not found: $BASENAME_PATH" 1>&2
+    exit 104
+elif [[ ! -f $BASENAME_PATH ]]; then
+    echo "$0: ERROR: basename a file: $BASENAME_PATH" 1>&2
+    exit 104
+elif [[ ! -x $BASENAME_PATH ]]; then
+    echo "$0: ERROR: basename not executable: $BASENAME_PATH" 1>&2
     exit 104
 fi
-export BASENAME_PROG
+export BASENAME_PATH
+
+# debugging
+#
+if [[ -n $V_FLAG ]]; then
+    echo "$0: debug: HOSTNAME_PATH=$HOSTNAME_PATH" 1>&2
+    echo "$0: debug: SSH_PATH=$SSH_PATH" 1>&2
+    echo "$0: debug: RSYNC_PATH=$RSYNC_PATH" 1>&2
+    echo "$0: debug: DIRNAME_PATH=$DIRNAME_PATH" 1>&2
+    echo "$0: debug: BASENAME_PATH=$BASENAME_PATH" 1>&2
+fi
 
 # be sure we are not on the remote host
 #
 HOST=${USERHOST##*@}
-if [[ $($HOSTNAME_PROG -s) = "$HOST" ]]; then
+if [[ $($HOSTNAME_PATH -s) == "$HOST" ]]; then
     echo "$0: ERROR: already on $HOST" 1>&2
     exit 94
 fi
 export HOST
 
-# the source dir must exist
+# src must exist
 #
 if [[ ! -e "$SRC" ]]; then
     echo "$0: ERROR: $SRC not found" 1>&2
@@ -256,7 +377,12 @@ fi
 # If SRC is /foo/bar, we move to /foo.
 # If SRC is ., we move to . (not ..)
 #
-DIR_OF_SRC=$("$DIRNAME_PROG" "$SRC")
+DIR_OF_SRC=$("$DIRNAME_PATH" "$SRC")
+status="$?"
+if [[ "$status" -ne "0" ]]; then
+    echo "$0: ERROR: dirname: $DIRNAME_PATH of: $SRC failed, exit code: $status" 1>&2
+    exit 95
+fi
 if [[ ! -d "$DIR_OF_SRC" ]]; then
     echo "$0: ERROR: parent directory: $DIR_OF_SRC does not exist" 1>&2
     exit 95
@@ -271,37 +397,69 @@ if [[ "$status" -ne "0" ]]; then
     exit 96
 fi
 
-# determine the full path of $DIR_OF_SRC which is now .
+# determine the directory of src
 #
-SRC_FULL_PATH=$(pwd)
-export SRC_FULL_PATH
+# Due to the cd above, the directory of src is now .
+#
+if [[ -n $A_FLAG ]]; then
+    DIR_OF_SRC_PATH=$(pwd -P)
+else
+    DIR_OF_SRC_PATH="$DIR_OF_SRC"
+fi
+export DIR_OF_SRC_PATH
 
-# determine, under SRC_FULL_PATH what we rsync from
+# determine, under DIR_OF_SRC_PATH what we rsync from
 #
-FROM=$("$BASENAME_PROG" "$SRC")
+FROM=$("$BASENAME_PATH" "$SRC")
+status="$?"
+if [[ "$status" -ne "0" ]]; then
+    echo "$0: ERROR: basename: $BASENAME_PATH of: $SRC failed, exit code: $status" 1>&2
+    exit 98
+fi
 if [[ ! -e "$FROM" ]]; then
-    echo "$0: ERROR: $FROM not found under $SRC_FULL_PATH" 1>&2
+    echo "$0: ERROR: $FROM not found under $DIR_OF_SRC_PATH" 1>&2
     exit 98
 fi
 export FROM
 
-# determine destination path
+# if no explicit destination path was given on the command line, use directory of src
 #
-DEST_PATH=${DEST_PATH:-$SRC_FULL_PATH}
+if [[ -z $DEST_PATH ]]; then
+    DEST_PATH="$DIR_OF_SRC_PATH"
+fi
+
+# more debugging
+#
+# help explain why we are about to try:
+#
+#	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_PATH"
+#
+if [[ -n $V_FLAG ]]; then
+    echo "$0: debug: DIR_OF_SRC=$DIR_OF_SRC" 1>&2
+    echo "$0: debug: DIR_OF_SRC_PATH=$DIR_OF_SRC_PATH" 1>&2
+    echo "$0: debug: HOST=$HOST" 1>&2
+    echo "$0: debug: FROM=$FROM" 1>&2
+    echo "$0: debug: SRC=$SRC" 1>&2
+    echo "$0: debug: USERHOST=$USERHOST" 1>&2
+    echo "$0: debug: DEST_PATH=$DEST_PATH" 1>&2
+    echo "$0: debug: cd: $DIR_OF_SRC" 1>&2
+    echo "$0: debug: from: $FROM" 1>&2
+    echo "$0: debug: to: $USERHOST:$DEST_PATH" 1>&2
+fi
 
 # construct rsync args
 #
 if [[ -n "$Z_FLAG" ]]; then
     PRE_E_AGS=(-e)
-    E_ARGS=(\""$SSH_PROG" -a -T -p "$P_FLAG" -q -x -C -o Compression=yes -o ConnectionAttempts=20\")
+    E_ARGS=(\""$SSH_PATH" -a -T -p "$P_FLAG" -q -x -C -o Compression=yes -o ConnectionAttempts=20\")
 else
     PRE_E_AGS=(-z -e)
-    E_ARGS=(\""$SSH_PROG" -a -T -p "$P_FLAG" -q -x -o Compression=no -o ConnectionAttempts=20\")
+    E_ARGS=(\""$SSH_PATH" -a -T -p "$P_FLAG" -q -x -o Compression=no -o ConnectionAttempts=20\")
 fi
 RSYNC_ARGS=(-a -S -0 --no-motd)
-if [[ -n "$C_FLAG" ]]; then
+if [[ -n "$CAP_C_FLAG" ]]; then
     RSYNC_ARGS+=(-C --exclude=\'.*.swp\')
-fi
+    fi
 if [[ -n "$D_FLAG" ]]; then
     RSYNC_ARGS+=(-d)
 fi
@@ -323,6 +481,12 @@ fi
 if [[ -n "$Q_FLAG" ]]; then
     RSYNC_ARGS+=(-q)
 fi
+if [[ -n "$S_FLAG" ]]; then
+    RSYNC_ARGS+=(--ignore-non-existing)
+fi
+if [[ -n "$CAP_S_FLAG" ]]; then
+    RSYNC_ARGS+=(--ignore-existing)
+fi
 if [[ -n "$U_FLAG" ]]; then
     RSYNC_ARGS+=(-u)
 fi
@@ -337,12 +501,12 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 # execute the rsync command
 #
 if [[ -n "$V_FLAG" ]]; then
-    echo "cd $DIR_OF_SRC; $RSYNC_PROG ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_PATH"
+    echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_PATH"
 fi
 if [[ -z "$N_FLAG" || -n "$V_FLAG" ]]; then
     # warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
     # shellcheck disable=SC2294
-    eval "$RSYNC_PROG" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM" "$USERHOST:$DEST_PATH"
+    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM" "$USERHOST:$DEST_PATH"
     status="$?"
 else
     status="0"
