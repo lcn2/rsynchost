@@ -28,7 +28,7 @@
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.20 2022-11-12"
+export RSYNCFROM_VERSION="1.21 2022-11-13"
 USAGE="rsyncfrom - rsync from a remote host to a local directory
 
 usage: $0 [-options ...] [user@]host dest
@@ -41,7 +41,8 @@ usage: $0 [-options ...] [user@]host dest
 	-h	print help and exit (def: don't)
 	-k	keep all files in the destination, do not delete anything (def: delete as needed)
 	-m	prune empty directory chains from file-list (def: don't)
-	-n		trial run: transfer nothing, do not remove nor create anything, test rsync with -n (def: do as needed)
+	-n		trial run: transfer nothing, do not remove nor create anything, use rsync with -n (def: do as needed)
+	-N		do not execute rsync, implies -n (def: execute rsync)
 	-p port		use ssh over TCP port (def: 22)
 	-P port		alias for -p num (def: 22)
 	-q		quiet operation (def: normal output)
@@ -81,6 +82,7 @@ F_FLAG=
 K_FLAG=
 M_FLAG=
 N_FLAG=
+CAP_N_FLAG=
 P_FLAG="22"
 Q_FLAG=
 S_FLAG=
@@ -89,14 +91,15 @@ U_FLAG=
 V_FLAG=
 X_FLAG=
 Z_FLAG=
-export A_FLAG CAP_C_FLAG D_FLAG CAP_E_FLAG F_FLAG K_FLAG M_FLAG N_FLAG P_FLAG Q_FLAG S_FLAG CAP_S_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
+export A_FLAG CAP_C_FLAG D_FLAG CAP_E_FLAG F_FLAG K_FLAG M_FLAG N_FLAG CAP_N_FLAG
+export P_FLAG Q_FLAG S_FLAG CAP_S_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
 HOSTNAME_PATH=
 SSH_PATH=
 RSYNC_PATH=
 DIRNAME_PATH=
 BASENAME_PATH=
 export HOSTNAME_PATH SSH_PATH RSYNC_PATH DIRNAME_PATH BASENAME_PATH
-while getopts :aCdEfhkmnp:P:qsSt:uxvVz flag; do
+while getopts :aCdEfhkmnNp:P:qsSt:uxvVz flag; do
     case "$flag" in
     a) A_FLAG="true" ;;
     C) CAP_C_FLAG="true" ;;
@@ -109,6 +112,8 @@ while getopts :aCdEfhkmnp:P:qsSt:uxvVz flag; do
     k) K_FLAG="true" ;;
     m) M_FLAG="true" ;;
     n) N_FLAG="true" ;;
+    N) N_FLAG="true";
+       CAP_N_FLAG="true" ;;
     p) P_FLAG="$OPTARG"; ;;
     P) P_FLAG="$OPTARG"; ;;
     q) Q_FLAG="true" ;;
@@ -493,7 +498,7 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 if [[ -n "$V_FLAG" ]]; then
     echo "cd $DIRNAME_DIR; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DIR_PATH/$DEST ."
 fi
-if [[ -z "$N_FLAG" || -n "$V_FLAG" ]]; then
+if [[ -z "$CAP_N_FLAG" ]]; then
     # warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
     # shellcheck disable=SC2294
     eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DIR_PATH/$DEST" .
