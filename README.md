@@ -5,7 +5,7 @@
 ```
 rsyncfrom - rsync from a remote host to a local directory
 rsyncto - rsync from a local directory to a remote host
-```:
+```
 
 ## Usage:
 
