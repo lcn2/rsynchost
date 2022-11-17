@@ -28,10 +28,10 @@
 
 # parse args
 #
-export RSYNCTO_VERSION="1.21 2022-11-13"
+export RSYNCTO_VERSION="1.22 2022-11-16"
 USAGE="rsyncto - rsync from a local directory to a remote host
 
-usage: $0 [-options ...] src [user@]host[:dest]
+usage: $0 [-options ...] src [user@]host[:dir]
 
 	-a	resolve directories to an absolute path from / (def: use directory paths as is)
 	-C	rsync will exclude a broad range of files that you often don't want to transfer (def: don't exclude)
@@ -58,7 +58,7 @@ usage: $0 [-options ...] src [user@]host[:dest]
 	src	source of current host to transfer
 	user	copy as user on remote host (def: current user)
 	host	host to transfer to
-	dest	destination directory on the remote host (def: use src)
+	dir	destination directory on the remote host (def: same as parent of src)
 
 See rsyncto(1) man page for more details.
 
@@ -170,10 +170,10 @@ if [[ -n $F_FLAG && -n $K_FLAG ]]; then
 fi
 SRC="$1"
 case "$2" in
-*:*) USERHOST=${2%%:*}; DEST_PATH=${2##*:}; ;;
-*) USERHOST="$2"; DEST_PATH= ;;	# empty DEST_PATH will become DIR_OF_SRC_PATH
+*:*) USERHOST=${2%%:*}; DEST_DIR_PATH=${2##*:}; ;;
+*) USERHOST="$2"; DEST_DIR_PATH= ;;	# empty DEST_DIR_PATH will become DIR_OF_SRC_PATH
 esac
-export SRC USERHOST DEST_PATH
+export SRC USERHOST DEST_DIR_PATH
 
 # firewall - only use commands from trusted directories, unless -t tool=path is used
 #
@@ -429,15 +429,15 @@ export FROM
 
 # if no explicit destination path was given on the command line, use directory of src
 #
-if [[ -z $DEST_PATH ]]; then
-    DEST_PATH="$DIR_OF_SRC_PATH"
+if [[ -z $DEST_DIR_PATH ]]; then
+    DEST_DIR_PATH="$DIR_OF_SRC_PATH"
 fi
 
 # more debugging
 #
 # help explain why we are about to try:
 #
-#	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_PATH"
+#	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_DIR_PATH"
 #
 if [[ -n $V_FLAG ]]; then
     echo "$0: debug: DIR_OF_SRC=$DIR_OF_SRC" 1>&2
@@ -445,11 +445,11 @@ if [[ -n $V_FLAG ]]; then
     echo "$0: debug: HOST=$HOST" 1>&2
     echo "$0: debug: FROM=$FROM" 1>&2
     echo "$0: debug: SRC=$SRC" 1>&2
-    echo "$0: debug: USERHOST=$USERHOST" 1>&2
-    echo "$0: debug: DEST_PATH=$DEST_PATH" 1>&2
+    echo "$0: debug: DEST_DIR_PATH=$DEST_DIR_PATH" 1>&2
     echo "$0: debug: cd: $DIR_OF_SRC" 1>&2
+    echo "$0: debug: USERHOST=$USERHOST" 1>&2
     echo "$0: debug: from: $FROM" 1>&2
-    echo "$0: debug: to: $USERHOST:$DEST_PATH" 1>&2
+    echo "$0: debug: to: $USERHOST:$DEST_DIR_PATH" 1>&2
 fi
 
 # construct rsync args
@@ -506,12 +506,12 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 # execute the rsync command
 #
 if [[ -n "$V_FLAG" ]]; then
-    echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_PATH"
+    echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DEST_DIR_PATH"
 fi
 if [[ -z "$CAP_N_FLAG" ]]; then
     # warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
     # shellcheck disable=SC2294
-    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM" "$USERHOST:$DEST_PATH"
+    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM" "$USERHOST:$DEST_DIR_PATH"
     status="$?"
 else
     status="0"

@@ -28,7 +28,7 @@
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.21 2022-11-13"
+export RSYNCFROM_VERSION="1.22 2022-11-16"
 USAGE="rsyncfrom - rsync from a remote host to a local directory
 
 usage: $0 [-options ...] [user@]host dest
@@ -381,13 +381,11 @@ if [[ -z "$N_FLAG" ]]; then
 	echo "$0: ERROR: count not create parent directory: $DIRNAME_DIR" 1>&2
 	exit 95
     fi
-else
-    if [[ ! -d "$DIRNAME_DIR" ]]; then
-	if [[ -n $V_FLAG ]]; then
-	    echo "$0: debug: use of -n disabled: mkdir -p $DIRNAME_DIR" 1>&2
-	fi
+elif [[ -n $V_FLAG ]]; then
+    if [[ -d "$DIRNAME_DIR" ]]; then
+	echo "$0: debug: DIRNAME_DIR is already a directory: $DIRNAME_DIR" 1>&2
     else
-	echo "$0: debug: DIRNAME_DIR is a directory: $DIRNAME_DIR" 1>&2
+	echo "$0: debug: mkdir -p $DIRNAME_DIR" 1>&2
     fi
 fi
 export DIRNAME_DIR
@@ -434,12 +432,11 @@ if [[ -n $V_FLAG ]]; then
     echo "$0: debug: HOST=$HOST" 1>&2
     echo "$0: debug: DEST=$DEST" 1>&2
     echo "$0: debug: DIRNAME_DIR_PATH=$DIRNAME_DIR_PATH" 1>&2
-    echo "$0: debug: DEST=$DEST" 1>&2
-    echo "$0: debug: USERHOST=$USERHOST" 1>&2
     echo "$0: debug: DIRNAME_DIR=$DIRNAME_DIR" 1>&2
     echo "$0: debug: cd: $DIRNAME_DIR" 1>&2
+    echo "$0: debug: USERHOST=$USERHOST" 1>&2
     echo "$0: debug: from: $USERHOST:$DIRNAME_DIR_PATH/$DEST" 1>&2
-    echo "$0: debug: to: $DIRNAME_DIR_PATH" 1>&2
+    echo "$0: debug: to: $DIRNAME_DIR/$DEST" 1>&2
 fi
 
 # execute the rsync command
