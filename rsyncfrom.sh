@@ -28,16 +28,17 @@
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.22 2022-11-16"
+export RSYNCFROM_VERSION="1.23 2022-11-17"
 USAGE="rsyncfrom - rsync from a remote host to a local directory
 
-usage: $0 [-options ...] [user@]host dest
+usage: $0 [-options ...] [user@]host[:dir] dest
 
 	-a	resolve directories to an absolute path from / (def: use directory paths as is)
 	-C	rsync will exclude a broad range of files that you often don't want to transfer (def: don't exclude)
 	-d	transfer directories without recursing (def: recursively transfer the directory tree)
 	-E	macOS only: copy extended attributes, resource forks, enable filesystem caching (def: don't)
 	-f	delete a non-empty directory when it is to be replaced by a non-directory (def: don't)
+	-i	internal shell variable values printed (def: don't)
 	-h	print help and exit (def: don't)
 	-k	keep all files in the destination, do not delete anything (def: delete as needed)
 	-m	prune empty directory chains from file-list (def: don't)
@@ -57,6 +58,7 @@ usage: $0 [-options ...] [user@]host dest
 
 	user	copy as user on remote host (def: current user)
 	host	host to transfer from
+	dir	copy from under remote host dir, dir must be a directory (def: use dest, which may be just a file)
 	dest	destination on current host to transfer to
 
 See rsyncfrom(1) man page for more details.
@@ -79,6 +81,7 @@ CAP_C_FLAG=
 D_FLAG=
 CAP_E_FLAG=
 F_FLAG=
+I_FLAG=
 K_FLAG=
 M_FLAG=
 N_FLAG=
@@ -91,15 +94,15 @@ U_FLAG=
 V_FLAG=
 X_FLAG=
 Z_FLAG=
-export A_FLAG CAP_C_FLAG D_FLAG CAP_E_FLAG F_FLAG K_FLAG M_FLAG N_FLAG CAP_N_FLAG
-export P_FLAG Q_FLAG S_FLAG CAP_S_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
+export A_FLAG CAP_C_FLAG D_FLAG CAP_E_FLAG F_FLAG I_FLAG K_FLAG M_FLAG N_FLAG
+export CAP_N_FLAG P_FLAG Q_FLAG S_FLAG CAP_S_FLAG U_FLAG V_FLAG X_FLAG Z_FLAG
 HOSTNAME_PATH=
 SSH_PATH=
 RSYNC_PATH=
 DIRNAME_PATH=
 BASENAME_PATH=
 export HOSTNAME_PATH SSH_PATH RSYNC_PATH DIRNAME_PATH BASENAME_PATH
-while getopts :aCdEfhkmnNp:P:qsSt:uxvVz flag; do
+while getopts :aCdEfhikmnNp:P:qsSt:uxvVz flag; do
     case "$flag" in
     a) A_FLAG="true" ;;
     C) CAP_C_FLAG="true" ;;
@@ -109,6 +112,7 @@ while getopts :aCdEfhkmnNp:P:qsSt:uxvVz flag; do
     h) echo "$USAGE";
 	exit 92;
 	;;
+    i) I_FLAG="true" ;;
     k) K_FLAG="true" ;;
     m) M_FLAG="true" ;;
     n) N_FLAG="true" ;;
@@ -166,9 +170,15 @@ if [[ -n $F_FLAG && -n $K_FLAG ]]; then
     echo "$0: ERROR: -f and -k conflict and cannot be used together" 1>&2
     exit 93
 fi
-USERHOST="$1"
+ORIG_ARG1="$1"
+ORIG_ARG2="$2"
+export ORIG_ARG1 ORIG_ARG2
+case "$1" in
+*:*) USERHOST=${1%%:*}; DIR_PATH=${1##*:}; ;;
+*) USERHOST="$1"; DIR_PATH= ;;	# use DEST
+esac
 DEST="$2"
-export USERHOST DEST
+export USERHOST DIR_PATH DEST
 
 # firewall - only use commands from trusted directories, unless -t tool=path is used
 #
@@ -348,7 +358,9 @@ export BASENAME_PATH
 
 # debugging
 #
-if [[ -n $V_FLAG ]]; then
+if [[ -n $I_FLAG ]]; then
+    echo "$0: debug: ORIG_ARG1=$ORIG_ARG1" 1>&2
+    echo "$0: debug: ORIG_ARG2=$ORIG_ARG2" 1>&2
     echo "$0: debug: HOSTNAME_PATH=$HOSTNAME_PATH" 1>&2
     echo "$0: debug: SSH_PATH=$SSH_PATH" 1>&2
     echo "$0: debug: RSYNC_PATH=$RSYNC_PATH" 1>&2
@@ -381,7 +393,7 @@ if [[ -z "$N_FLAG" ]]; then
 	echo "$0: ERROR: count not create parent directory: $DIRNAME_DEST" 1>&2
 	exit 95
     fi
-elif [[ -n $V_FLAG ]]; then
+elif [[ -n $I_FLAG ]]; then
     if [[ -d "$DIRNAME_DEST" ]]; then
 	echo "$0: debug: DIRNAME_DEST is already a directory: $DIRNAME_DEST" 1>&2
     else
@@ -424,18 +436,27 @@ export DEST
 
 # more debugging
 #
-# help explain why we are about to try:
+# If no :dir given in 1st argument ($DIR_PATH is empty):
 #
 #	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
 #
-if [[ -n $V_FLAG ]]; then
+# If :dir given in 1st argument ($DIR_PATH is not empty):
+#
+#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$SRC_PATH/ $DEST"
+#
+if [[ -n $I_FLAG ]]; then
     echo "$0: debug: HOST=$HOST" 1>&2
     echo "$0: debug: DEST=$DEST" 1>&2
     echo "$0: debug: DIRNAME_DEST_PATH=$DIRNAME_DEST_PATH" 1>&2
     echo "$0: debug: DIRNAME_DEST=$DIRNAME_DEST" 1>&2
+    echo "$0: debug: DIR_PATH=$DIR_PATH" 1>&2
     echo "$0: debug: cd: $DIRNAME_DEST" 1>&2
     echo "$0: debug: USERHOST=$USERHOST" 1>&2
-    echo "$0: debug: from: $USERHOST:$DIRNAME_DEST_PATH/$DEST" 1>&2
+    if [[ -z $DIR_PATH ]]; then
+	echo "$0: debug: from: $USERHOST:$DIRNAME_DEST_PATH/$DEST" 1>&2
+    else
+	echo "$0: debug: from: $USERHOST:$DIR_PATH/" 1>&2
+    fi
     echo "$0: debug: to: $DIRNAME_DEST/$DEST" 1>&2
 fi
 
@@ -451,7 +472,7 @@ fi
 RSYNC_ARGS=(-a -S -0 --no-motd)
 if [[ -n "$CAP_C_FLAG" ]]; then
     RSYNC_ARGS+=(-C --exclude=\'.*.swp\')
-    fi
+fi
 if [[ -n "$D_FLAG" ]]; then
     RSYNC_ARGS+=(-d)
 fi
@@ -493,13 +514,24 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 # execute the rsync command
 #
 if [[ -n "$V_FLAG" ]]; then
-    echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
+    if [[ -z $DIR_PATH ]]; then
+	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
+    else
+	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIR_PATH/ $DEST"
+    fi
 fi
 if [[ -z "$CAP_N_FLAG" ]]; then
-    # warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
-    # shellcheck disable=SC2294
-    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DEST_PATH/$DEST" .
-    status="$?"
+    if [[ -z $DIR_PATH ]]; then
+	# warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
+	# shellcheck disable=SC2294
+	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DEST_PATH/$DEST" .
+	status="$?"
+   else
+	# warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
+	# shellcheck disable=SC2294
+	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIR_PATH/" "$DEST"
+	status="$?"
+   fi
 else
     status="0"
 fi
