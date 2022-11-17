@@ -367,37 +367,37 @@ export HOST
 
 # create, if needed the directory that will contain dest
 #
-DIRNAME_DIR=$("$DIRNAME_PATH" "$DEST")
+DIRNAME_DEST=$("$DIRNAME_PATH" "$DEST")
 status="$?"
 if [[ "$status" -ne "0" ]]; then
     echo "$0: ERROR: dirname: $DIRNAME_PATH of: $DEST failed, exit code: $status" 1>&2
     exit 95
 fi
 if [[ -z "$N_FLAG" ]]; then
-    if [[ ! -d "$DIRNAME_DIR" ]]; then
-	mkdir -p "$DIRNAME_DIR"
+    if [[ ! -d "$DIRNAME_DEST" ]]; then
+	mkdir -p "$DIRNAME_DEST"
     fi
-    if [[ ! -d "$DIRNAME_DIR" ]]; then
-	echo "$0: ERROR: count not create parent directory: $DIRNAME_DIR" 1>&2
+    if [[ ! -d "$DIRNAME_DEST" ]]; then
+	echo "$0: ERROR: count not create parent directory: $DIRNAME_DEST" 1>&2
 	exit 95
     fi
 elif [[ -n $V_FLAG ]]; then
-    if [[ -d "$DIRNAME_DIR" ]]; then
-	echo "$0: debug: DIRNAME_DIR is already a directory: $DIRNAME_DIR" 1>&2
+    if [[ -d "$DIRNAME_DEST" ]]; then
+	echo "$0: debug: DIRNAME_DEST is already a directory: $DIRNAME_DEST" 1>&2
     else
-	echo "$0: debug: mkdir -p $DIRNAME_DIR" 1>&2
+	echo "$0: debug: mkdir -p $DIRNAME_DEST" 1>&2
     fi
 fi
-export DIRNAME_DIR
+export DIRNAME_DEST
 
 # move into the directory of the DEST
 #
 # warning: Use 'cd ... || exit' or 'cd ... || return' in case cd fails. [SC2164]
 # shellcheck disable=SC2164
-cd "$DIRNAME_DIR" 2>/dev/null
+cd "$DIRNAME_DEST" 2>/dev/null
 status="$?"
 if [[ "$status" -ne "0" ]]; then
-    echo "$0: ERROR: cannot cd parent directory: $DIRNAME_DIR" 1>&2
+    echo "$0: ERROR: cannot cd parent directory: $DIRNAME_DEST" 1>&2
     exit 96
 fi
 
@@ -406,11 +406,11 @@ fi
 # Due to the cd above, the directory of dest is now .
 #
 if [[ -n $A_FLAG ]]; then
-    DIRNAME_DIR_PATH=$(pwd -P)
+    DIRNAME_DEST_PATH=$(pwd -P)
 else
-    DIRNAME_DIR_PATH="$DIRNAME_DIR"
+    DIRNAME_DEST_PATH="$DIRNAME_DEST"
 fi
-export DIRNAME_DIR_PATH
+export DIRNAME_DEST_PATH
 
 # determine the destination name under the current directory
 #
@@ -426,17 +426,17 @@ export DEST
 #
 # help explain why we are about to try:
 #
-#	echo "cd $DIRNAME_DIR; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DIR_PATH/$DEST ."
+#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
 #
 if [[ -n $V_FLAG ]]; then
     echo "$0: debug: HOST=$HOST" 1>&2
     echo "$0: debug: DEST=$DEST" 1>&2
-    echo "$0: debug: DIRNAME_DIR_PATH=$DIRNAME_DIR_PATH" 1>&2
-    echo "$0: debug: DIRNAME_DIR=$DIRNAME_DIR" 1>&2
-    echo "$0: debug: cd: $DIRNAME_DIR" 1>&2
+    echo "$0: debug: DIRNAME_DEST_PATH=$DIRNAME_DEST_PATH" 1>&2
+    echo "$0: debug: DIRNAME_DEST=$DIRNAME_DEST" 1>&2
+    echo "$0: debug: cd: $DIRNAME_DEST" 1>&2
     echo "$0: debug: USERHOST=$USERHOST" 1>&2
-    echo "$0: debug: from: $USERHOST:$DIRNAME_DIR_PATH/$DEST" 1>&2
-    echo "$0: debug: to: $DIRNAME_DIR/$DEST" 1>&2
+    echo "$0: debug: from: $USERHOST:$DIRNAME_DEST_PATH/$DEST" 1>&2
+    echo "$0: debug: to: $DIRNAME_DEST/$DEST" 1>&2
 fi
 
 # execute the rsync command
@@ -493,12 +493,12 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 # execute the rsync command
 #
 if [[ -n "$V_FLAG" ]]; then
-    echo "cd $DIRNAME_DIR; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DIR_PATH/$DEST ."
+    echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
 fi
 if [[ -z "$CAP_N_FLAG" ]]; then
     # warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
     # shellcheck disable=SC2294
-    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DIR_PATH/$DEST" .
+    eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DEST_PATH/$DEST" .
     status="$?"
 else
     status="0"
