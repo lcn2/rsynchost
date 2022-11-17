@@ -58,7 +58,7 @@ usage: $0 [-options ...] [user@]host[:dir] dest
 
 	user	copy as user on remote host (def: current user)
 	host	host to transfer from
-	dir	copy from under remote host dir, dir must be a directory (def: use dest, which may be just a file)
+	dir	optional copy from under remote host directory dir (def: use dest, in which case dest may be a file)
 	dest	destination on current host to transfer to
 
 See rsyncfrom(1) man page for more details.

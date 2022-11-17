@@ -59,7 +59,7 @@ usage: $0 [-options ...] src [user@]host[:dir]
 	src	source of current host to transfer
 	user	copy as user on remote host (def: current user)
 	host	host to transfer to
-	dir	destination directory on the remote host (def: same as parent of src)
+	dir	optional destination directory on the remote host (def: use as parent directory of src)
 
 See rsyncto(1) man page for more details.
 
