@@ -442,7 +442,7 @@ export DEST
 #
 # If :dir given in 1st argument ($DIR_PATH is not empty):
 #
-#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$SRC_PATH/ $DEST"
+#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIR_PATH/ $DEST"
 #
 if [[ -n $I_FLAG ]]; then
     echo "$0: debug: HOST=$HOST" 1>&2

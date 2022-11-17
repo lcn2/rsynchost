@@ -456,7 +456,7 @@ if [[ -n $I_FLAG ]]; then
     echo "$0: debug: USERHOST=$USERHOST" 1>&2
     if [[ -z $DIR_PATH ]]; then
 	echo "$0: debug: from: $FROM" 1>&2
-	echo "$0: debug: to: $USERHOST:$DIR_PATH" 1>&2
+	echo "$0: debug: to: $USERHOST:$DIR_OF_SRC_PATH" 1>&2
     else
 	echo "$0: debug: from: $FROM/" 1>&2
 	echo "$0: debug: to: $USERHOST:$DIR_PATH" 1>&2
