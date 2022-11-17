@@ -65,7 +65,7 @@ See rsyncto(1) man page for more details.
 
 Exit codes:
      0      all is well
-     1-89   rsync error
+     1-89   rsync and/or ssh error
     92	    help mode or print version
     93	    invalid command line
     94	    already on remote host
