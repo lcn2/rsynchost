@@ -7,11 +7,33 @@ rsyncfrom - rsync from a remote host to a local directory
 rsyncto - rsync from a local directory to a remote host
 ```
 
-## Usage:
+## Examples:
 
+Pull a directory tree from a remote host in verbose mode:
+
+```sh
+rsyncfrom -v host.example.org /usr/local/src/bin/name
 ```
-rsyncfrom [-options ...] [user@]host[:dir] dest
-rsyncto [-options ...] src [user@]host[:dir]
+
+Push a local copy of a directory tree onto a remote host:
+
+```sh
+rsyncto /usr/local/src/bin/curds host.example.org
+```
+
+To see what might happen if were to push a tree to a remote host
+(but don't actually change anything):
+
+```sh
+rsyncto -n -v /var/tmp/foo server.example.com
+```
+
+To just see the `cd(1)` and `rsync(1)` (via `ssh(1)`) command needed
+to sync a local directory onto a remote host (but don't connect to
+the host and don't change anything):
+
+```sh
+rsyncto -N -v /project/curds archive.example.net
 ```
 
 ## To install:
@@ -34,6 +56,13 @@ Then:
 
 ```sh
 $ make clobber all install
+```
+
+## Usage:
+
+```
+rsyncfrom [-options ...] [user@]host[:dir] dest
+rsyncto [-options ...] src [user@]host[:dir]
 ```
 
 ## Common options:
@@ -59,26 +88,4 @@ See the `rsyncfrom(1)` and `rsyncto(1)` man pages for a complete list of  _-opti
 
 ```
 XXX: The man pages are being written.  In the mean time run: `rsyncfrom -h` and `rsyncto -h`.
-```
-
-## Examples:
-
-Pull a tree from a remote host in verbose mode:
-
-```sh
-rsyncfrom -v host.example.org /usr/local/src/bin/name
-```
-
-To see what might happen if were to push a tree to a remote host (but don't change anything):
-
-```sh
-rsyncto -n -v /var/tmp/foo server.example.com
-```
-
-To just see the `cd(1)` and `rsync(1)` (via `ssh(1)`) command needed
-to sync a local directory onto a remote host (but don't connect and
-don't change anything):
-
-```sh
-rsyncto -N -v /project/curds archive.example.net
 ```
