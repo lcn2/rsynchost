@@ -152,7 +152,7 @@ while getopts :aCdEfhikmnNp:P:qsSt:uxvVz flag; do
 	;;
     x) X_FLAG="true" ;;
     z) Z_FLAG="true" ;;
-    \?) "$0: ERROR: invalid option: -$OPTARG" 1>&2;
+    \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2;
 	exit 93;
 	;;
     :)  echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2;
