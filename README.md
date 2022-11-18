@@ -9,10 +9,11 @@ rsyncto - rsync from a local directory to a remote host
 
 ## Examples:
 
-**NOTE:** Because you can do a lot of damage by syncing the wrong thing
+**IMPORTANT:** Because you can do a lot of damage by syncing the wrong thing
 to/from the wrong host, we **STRONGLY RECOMMEND** that you **ALWAYS**
-try the command with `-n -v`, which will print the effective commands,
-make a connection to the remote host without changing anything:
+try the command first with `-n -v`.  This will print the effective commands
+that will be used, make a connection to the remote host, and
+go through the syncing motions *without changing anything*:
 
 ```sh
 rsyncfrom -n -v archive.example.net /project/curds
@@ -31,16 +32,21 @@ Push a local copy of a directory tree onto a remote host:
 rsyncto /usr/local/src/bin/curds host.example.org
 ```
 
-To sync from a **directory** on a remote host, into a local directory of a different host:
+Sync from a **directory** on a remote host, into a different local directory
+and sync a local directory into a different **directory** on a remote host
 
 ```sh
 rsyncfrom -v host.example.org:/var/tmp/testdir /usr/local/src/bin/new
+rsyncto -v /usr/local/src/bin/workdir host.example.org:/var/tmp/testdir
 ```
 
-Sync a local directory into a **directory** on a remote host:
+NOTE: When using the _host:dir_ form, the _dir_ **MUST** be a directory.
+
+Without using the _host:dir_ form, you may sync just a file:
 
 ```sh
-rsyncto -v /usr/local/src/bin/workdir host.example.org:/var/tmp/testdir
+rsyncfrom -v host.example.org /etc/motd
+rsyncto -v /etc/motd host.example.org
 ```
 
 To see what might happen without even connecting to the remote host,
