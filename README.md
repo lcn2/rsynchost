@@ -9,31 +9,45 @@ rsyncto - rsync from a local directory to a remote host
 
 ## Examples:
 
-**IMPORTANT:** Because you can do a lot of damage by syncing the wrong thing
-to/from the wrong host, we **STRONGLY RECOMMEND** that you **ALWAYS**
-try the command first with `-n -v`.  This will print the effective commands
-that will be used, make a connection to the remote host, and
-go through the syncing motions *without changing anything*:
+Pull a directory tree from a remote host in verbose mode
+to a local directory of the same path:
+
+```sh
+rsyncfrom -v host.example.org /usr/local/src/bin/name
+```
+
+Push a local copy of a directory tree onto the same
+path on a remote host:
+
+```sh
+rsyncto -v /usr/local/src/bin/curds host.example.org
+```
+
+**IMPORTANT:**
+
+```
+Because you can do a lot of damage by syncing the wrong thing to/from the wrong host,
+we STRONGLY RECOMMEND that you ALWAYS try the command with -n -v options first!
+```
+
+The use of `-n -v` will:
+
+- print the effective commands that will be used
+- make a connection to the remote host
+- go through the syncing motions *without changing anything*
+- print some syncing stats
+
+For example:
 
 ```sh
 rsyncfrom -n -v archive.example.net /project/curds
 rsyncto -n -v /project/curds archive.example.net
 ```
 
-Pull a directory tree from a remote host in verbose mode:
+By default, the same path is used on the local host as the remote host.
 
-```sh
-rsyncfrom -v host.example.org /usr/local/src/bin/name
-```
-
-Push a local copy of a directory tree onto a remote host:
-
-```sh
-rsyncto /usr/local/src/bin/curds host.example.org
-```
-
-Sync from a **directory** on a remote host, into a different local directory
-and sync a local directory into a different **directory** on a remote host
+To sync from a **directory** on a remote host, into a **different** local directory
+and sync a local directory into a **different** **directory** on a remote host:
 
 ```sh
 rsyncfrom -v host.example.org:/var/tmp/testdir /usr/local/src/bin/new
@@ -42,7 +56,7 @@ rsyncto -v /usr/local/src/bin/workdir host.example.org:/var/tmp/testdir
 
 NOTE: When using the _host:dir_ form, the _dir_ **MUST** be a directory.
 
-Without using the _host:dir_ form, you may sync just a file:
+Without using the _host:dir_ form, you may sync either a directory tree or just a single file:
 
 ```sh
 rsyncfrom -v host.example.org /etc/motd
