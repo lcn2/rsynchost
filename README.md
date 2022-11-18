@@ -28,12 +28,25 @@ To see what might happen if were to push a tree to a remote host
 rsyncto -n -v /var/tmp/foo server.example.com
 ```
 
-To just see the `cd(1)` and `rsync(1)` (via `ssh(1)`) command needed
-to sync a local directory onto a remote host (but don't connect to
-the host and don't change anything):
+To just see the `cd(1)` and `rsync(1)` (via `ssh(1)`) commands
+that these tools will use, without connecting to the remote host
+and without changing anything:
 
 ```sh
+rsyncfrom -N -v archive.example.net /project/curds
 rsyncto -N -v /project/curds archive.example.net
+```
+
+To sync from a *directory* on a remote host, into a local directory of a different host:
+
+```sh
+rsyncfrom -v host.example.org:/var/tmp/testdir /usr/local/src/bin/new
+```
+
+To sync a local directory into a *directory* on a remote host:
+
+```sh
+rsyncto -v /usr/local/src/bin/workdir host.example.org:/var/tmp/testdir
 ```
 
 ## To install:
