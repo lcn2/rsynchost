@@ -129,5 +129,10 @@ Print the `cd(1)` and `rsync(1)` operations but do not run `rsync(1)` do not con
 See the `rsyncfrom(1)` and `rsyncto(1)` man pages for a complete list of  _-options_.
 
 ```
-XXX: The man pages are being written.  In the mean time run: `rsyncfrom -h` and `rsyncto -h`.
+XXX: The man pages are being written.  In the mean time run:
+
+```sh
+rsyncfrom -h
+rsyncto -h
+```
 ```
