@@ -38,24 +38,31 @@ rsyncto -N -v /project/curds archive.example.net
 
 ## To install:
 
-NOTE: Before installing, we recommend that you verify that you have the latest
-release of the [rsynchost repo](https://github.com/lcn2/rsynchost):
+The primary location of the [rsynchost repo](https://github.com/lcn2/rsynchost) is:
 
 ```url
 https://github.com/lcn2/rsynchost
 ```
 
-Try:
+To fetch this repo and move into the sub-directory `rsynchost`:
 
 ```sh
-$ git pull
+git clone https://github.com/lcn2/rsynchost.git
+cd rsynchost
 ```
 
-Then:
+To update your repo with the latest from the master branch:
 
 
 ```sh
-$ make clobber all install
+git pull
+```
+
+To install under `/usr/local/bin`:
+
+
+```sh
+make clobber all install
 ```
 
 ## Usage:
