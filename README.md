@@ -9,6 +9,16 @@ rsyncto - rsync from a local directory to a remote host
 
 ## Examples:
 
+**NOTE:** Because you can do a lot of damage by syncing the wrong thing
+to/from the wrong host, we **STRONGLY RECOMMEND** that you **ALWAYS**
+try the command with `-n -v`, which will print the effective commands,
+make a connection to the remote host without changing anything:
+
+```sh
+rsyncfrom -n -v archive.example.net /project/curds
+rsyncto -n -v /project/curds archive.example.net
+```
+
 Pull a directory tree from a remote host in verbose mode:
 
 ```sh
@@ -21,32 +31,24 @@ Push a local copy of a directory tree onto a remote host:
 rsyncto /usr/local/src/bin/curds host.example.org
 ```
 
-To see what might happen if were to push a tree to a remote host
-(but don't actually change anything):
-
-```sh
-rsyncto -n -v /var/tmp/foo server.example.com
-```
-
-To just see the `cd(1)` and `rsync(1)` (via `ssh(1)`) commands
-that these tools will use, without connecting to the remote host
-and without changing anything:
-
-```sh
-rsyncfrom -N -v archive.example.net /project/curds
-rsyncto -N -v /project/curds archive.example.net
-```
-
-To sync from a *directory* on a remote host, into a local directory of a different host:
+To sync from a **directory** on a remote host, into a local directory of a different host:
 
 ```sh
 rsyncfrom -v host.example.org:/var/tmp/testdir /usr/local/src/bin/new
 ```
 
-To sync a local directory into a *directory* on a remote host:
+Sync a local directory into a **directory** on a remote host:
 
 ```sh
 rsyncto -v /usr/local/src/bin/workdir host.example.org:/var/tmp/testdir
+```
+
+To see what might happen without even connecting to the remote host,
+use the `-N -v` options:
+
+```sh
+rsyncfrom -N -v archive.example.net /project/curds
+rsyncto -N -v /project/curds archive.example.net
 ```
 
 ## To install:
