@@ -28,7 +28,7 @@
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.23 2022-11-17"
+export RSYNCFROM_VERSION="1.24 2022-11-18"
 USAGE="rsyncfrom - rsync from a remote host to a local directory
 
 usage: $0 [-options ...] [user@]host[:dir] dest
@@ -520,6 +520,7 @@ if [[ -n "$V_FLAG" ]]; then
 	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIR_PATH/ $DEST"
     fi
 fi
+export status="0"
 if [[ -z "$CAP_N_FLAG" ]]; then
     if [[ -z $DIR_PATH ]]; then
 	# warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
@@ -532,10 +533,7 @@ if [[ -z "$CAP_N_FLAG" ]]; then
 	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIR_PATH/" "$DEST"
 	status="$?"
    fi
-else
-    status="0"
 fi
-export status
 
 # All Done!!! -- Jessica Noll, Age 2
 #
