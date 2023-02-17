@@ -2,7 +2,7 @@
 #
 # rsyncto - rsync a local directory to a remote host
 #
-# Copyright (c) 2001-2014,2022 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2001-2014,2022,2023 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -28,7 +28,7 @@
 
 # parse args
 #
-export RSYNCTO_VERSION="1.24 2022-11-18"
+export RSYNCTO_VERSION="1.25 2023-02-16"
 USAGE="rsyncto - rsync from a local directory to a remote host
 
 usage: $0 [-options ...] src [user@]host[:dir]
@@ -418,6 +418,9 @@ if [[ -n $A_FLAG ]]; then
     DIR_OF_SRC_PATH=$(pwd -P)
 else
     DIR_OF_SRC_PATH="$DIR_OF_SRC"
+fi
+if [[ $DIR_OF_SRC_PATH == "." ]]; then
+    DIR_OF_SRC_PATH=$(pwd)
 fi
 export DIR_OF_SRC_PATH
 

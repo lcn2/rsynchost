@@ -2,7 +2,7 @@
 #
 # rsyncfrom - rsync from a remote to a local directory
 #
-# Copyright (c) 2001-2014,2022 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2001-2014,2022,2023 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -28,7 +28,7 @@
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.24 2022-11-18"
+export RSYNCFROM_VERSION="1.25 2023-02-16"
 USAGE="rsyncfrom - rsync from a remote host to a local directory
 
 usage: $0 [-options ...] [user@]host[:dir] dest
@@ -421,6 +421,9 @@ if [[ -n $A_FLAG ]]; then
     DIRNAME_DEST_PATH=$(pwd -P)
 else
     DIRNAME_DEST_PATH="$DIRNAME_DEST"
+fi
+if [[ $DIRNAME_DEST_PATH == "." ]]; then
+    DIRNAME_DEST_PATH=$(pwd)
 fi
 export DIRNAME_DEST_PATH
 
