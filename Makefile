@@ -1,12 +1,8 @@
-#!/usr/bin/make
+#!/usr/bin/env make
 #
 # rsynchost - host based rsync utilities
 #
-# @(#) $Revision: 1.11 $
-# @(#) $Id: Makefile,v 1.11 2014/03/15 23:59:57 root Exp $
-# @(#) $Source: /usr/local/src/bin/rsynchost/RCS/Makefile,v $
-#
-# Copyright (c) 2001-2013,2021 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2001-2013,2021,2023 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -30,7 +26,7 @@
 #
 # Share and enjoy!
 
-SHELL=/bin/bash
+SHELL= bash
 INSTALL= install
 BINMODE=0555
 RM= rm
