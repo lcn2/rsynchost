@@ -134,3 +134,8 @@ XXX: The man pages are being written.  Until these man pages are written, use:
 rsyncfrom -h
 rsyncto -h
 ```
+
+
+# Reporting Security Issues
+
+To report a security issue, please visit "[Reporting Security Issues](https://github.com/lcn2/rsynchost/security/policy)".
