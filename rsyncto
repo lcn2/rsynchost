@@ -32,7 +32,7 @@
 
 # parse args
 #
-export RSYNCTO_VERSION="1.25.1 2023-02-16"
+export RSYNCTO_VERSION="1.25.1 2025-04-13"
 USAGE="rsyncto - rsync from a local directory to a remote host
 
 usage: $0 [-options ...] src [user@]host[:dir]
