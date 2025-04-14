@@ -2,7 +2,7 @@
 #
 # rsynchost - host based rsync utilities
 #
-# Copyright (c) 2001-2013,2021,2023 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2001,2013-2014,2021-2023,2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -22,43 +22,78 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 #
-# chongo <was here> /\oo/\
+# chongo (Landon Curt Noll) /\oo/\
 #
-# Share and enjoy!
+# http://www.isthe.com/chongo/index.html
+# https://github.com/lcn2
+#
+# Share and enjoy!  :-)
 
-SHELL= bash
-INSTALL= install
-BINMODE=0555
-RM= rm
-CP= cp
+
+#############
+# utilities #
+#############
+
+CC= cc
 CHMOD= chmod
-SHELLCHECK= shellcheck
+CP= cp
+ID= id
+INSTALL= install
+RM= rm
+SHELL= bash
 
-DESTBIN=/usr/local/bin
+
+######################
+# target information #
+######################
+
+# V=@:  do not echo debug statements (quiet mode)
+# V=@   echo debug statements (debug / verbose mode)
+#
+V=@:
+#V=@
+
+PREFIX= /usr/local
+DESTDIR= ${PREFIX}/bin
 
 TARGETS= rsyncfrom rsyncto
 
+
+######################################
+# all - default rule - must be first #
+######################################
+
 all: ${TARGETS}
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
-rsyncfrom: rsyncfrom.sh
-	${RM} -f $@
-	${CP} $@.sh $@
-	${CHMOD} +x $@
 
-rsyncto: rsyncto.sh
-	${RM} -f $@
-	${CP} $@.sh $@
-	${CHMOD} +x $@
+#################################################
+# .PHONY list of rules that do not create files #
+#################################################
 
-# local rules
-#
-shellcheck: rsyncfrom.sh rsyncto.sh
-	${SHELLCHECK} -f gcc -- rsyncfrom.sh rsyncto.sh
+.PHONY: all configure clean clobber install
 
-install: all
-	${INSTALL} -c -m ${BINMODE} ${TARGETS} ${DESTBIN}
+
+###################################
+# standard Makefile utility rules #
+###################################
+
+configure:
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 clean:
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
 
 clobber: clean
-	${RM} -f ${TARGETS}
+	${V} echo DEBUG =-= $@ start =-=
+	${V} echo DEBUG =-= $@ end =-=
+
+install: all
+	${V} echo DEBUG =-= $@ start =-=
+	@if [[ $$(${ID} -u) != 0 ]]; then echo "ERROR: must be root to make $@" 1>&2; exit 2; fi
+	${INSTALL} -d -m 0755 ${DESTDIR}
+	${INSTALL} -m 0555 ${TARGETS} ${DESTDIR}
+	${V} echo DEBUG =-= $@ end =-=

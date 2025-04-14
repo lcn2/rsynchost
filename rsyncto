@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# rsyncfrom - rsync from a remote to a local directory
+# rsyncto - rsync a local directory to a remote host
 #
-# Copyright (c) 2001-2014,2022,2023 by Landon Curt Noll.  All Rights Reserved.
+# Copyright (c) 2001,2013-2014,2021-2023,2025 by Landon Curt Noll.  All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and
 # its documentation for any purpose and without fee is hereby granted,
@@ -22,16 +22,20 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 #
-# chongo <was here> /\oo/\
+# chongo (Landon Curt Noll) /\oo/\
 #
-# Share and enjoy!
+# http://www.isthe.com/chongo/index.html
+# https://github.com/lcn2
+#
+# Share and enjoy!  :-)
+
 
 # parse args
 #
-export RSYNCFROM_VERSION="1.25 2023-02-16"
-USAGE="rsyncfrom - rsync from a remote host to a local directory
+export RSYNCTO_VERSION="1.25.1 2023-02-16"
+USAGE="rsyncto - rsync from a local directory to a remote host
 
-usage: $0 [-options ...] [user@]host[:dir] dest
+usage: $0 [-options ...] src [user@]host[:dir]
 
 	-a	resolve directories to an absolute path from / (def: use directory paths as is)
 	-C	rsync will exclude a broad range of files that you often don't want to transfer (def: don't exclude)
@@ -56,12 +60,12 @@ usage: $0 [-options ...] [user@]host[:dir] dest
 	-V	print version and exit (def: don't)
 	-z	compress via ssh, not via rsync (def: compress via rsync only)
 
+	src	source of current host to transfer
 	user	copy as user on remote host (def: current user)
-	host	host to transfer from
-	dir	optional copy from under remote host directory dir (def: use dest, in which case dest may be a file)
-	dest	destination on current host to transfer to
+	host	host to transfer to
+	dir	optional destination directory on the remote host (def: use as parent directory of src)
 
-See rsyncfrom(1) man page for more details.
+See rsyncto(1) man page for more details.
 
 Exit codes:
      0      all is well
@@ -69,13 +73,14 @@ Exit codes:
     92	    help mode or print version
     93	    invalid command line
     94	    already on remote host
-    95	    cannot create parent directory of dest
-    96	    cannot cd to parent directory of dest
-    98	    cannot determine basename of dest
+    95	    cannot determine the parent directory of src
+    96	    cannot cd to parent directory of src
+    97	    src not found
+    98	    cannot determine basename of src
    100-109  critical tool not executable or not found
  >=110      internal error
 
-$0: version: $RSYNCFROM_VERSION"
+$0: version: $RSYNCTO_VERSION"
 A_FLAG=
 CAP_C_FLAG=
 D_FLAG=
@@ -146,7 +151,7 @@ while getopts :aCdEfhikmnNp:P:qsSt:uxvVz flag; do
        ;;
     u) U_FLAG="true" ;;
     v) V_FLAG="true" ;;
-    V) echo "$RSYNCFROM_VERSION";
+    V) echo "$RSYNCTO_VERSION";
 	exit 92;
 	;;
     x) X_FLAG="true" ;;
@@ -173,12 +178,12 @@ fi
 ORIG_ARG1="$1"
 ORIG_ARG2="$2"
 export ORIG_ARG1 ORIG_ARG2
-case "$1" in
-*:*) USERHOST=${1%%:*}; DIR_PATH=${1##*:}; ;;
-*) USERHOST="$1"; DIR_PATH= ;;	# use DEST
+SRC="$1"
+case "$2" in
+*:*) USERHOST=${2%%:*}; DIR_PATH=${2##*:}; ;;
+*) USERHOST="$2"; DIR_PATH= ;;	# empty DIR_PATH will become DIR_OF_SRC_PATH
 esac
-DEST="$2"
-export USERHOST DIR_PATH DEST
+export SRC USERHOST DIR_PATH
 
 # firewall - only use commands from trusted directories, unless -t tool=path is used
 #
@@ -189,11 +194,11 @@ export USERHOST DIR_PATH DEST
 # because $HOST is not universally set and may be incorrectly set.
 #
 # We use the basename command instead of bash variable ${XYZZY##*/}
-# because we need a precise basename operation the dest argument
+# because we need a precise basename operation the src argument
 # contains an unusual path.
 #
 # We use the dirname command instead of bash variable ${XYZZY%/*}
-# because we need a precise dirname operation the dest argument
+# because we need a precise dirname operation the src argument
 # contains an unusual path.
 #
 if [[ -z $HOSTNAME_PATH ]]; then
@@ -377,93 +382,95 @@ if [[ $($HOSTNAME_PATH -s) == "$HOST" ]]; then
 fi
 export HOST
 
-# create, if needed the directory that will contain dest
+# src must exist
 #
-DIRNAME_DEST=$("$DIRNAME_PATH" "$DEST")
+if [[ ! -e "$SRC" ]]; then
+    echo "$0: ERROR: $SRC not found" 1>&2
+    exit 97
+fi
+
+# move into the directory of the SRC
+#
+# If SRC is /foo/bar, we move to /foo.
+# If SRC is ., we move to . (not ..)
+#
+DIR_OF_SRC=$("$DIRNAME_PATH" "$SRC")
 status="$?"
 if [[ "$status" -ne "0" ]]; then
-    echo "$0: ERROR: dirname: $DIRNAME_PATH of: $DEST failed, exit code: $status" 1>&2
+    echo "$0: ERROR: dirname: $DIRNAME_PATH of: $SRC failed, exit code: $status" 1>&2
     exit 95
 fi
-if [[ -z "$N_FLAG" ]]; then
-    if [[ ! -d "$DIRNAME_DEST" ]]; then
-	mkdir -p "$DIRNAME_DEST"
-    fi
-    if [[ ! -d "$DIRNAME_DEST" ]]; then
-	echo "$0: ERROR: count not create parent directory: $DIRNAME_DEST" 1>&2
-	exit 95
-    fi
-elif [[ -n $I_FLAG ]]; then
-    if [[ -d "$DIRNAME_DEST" ]]; then
-	echo "$0: debug: DIRNAME_DEST is already a directory: $DIRNAME_DEST" 1>&2
-    else
-	echo "$0: debug: mkdir -p $DIRNAME_DEST" 1>&2
-    fi
+if [[ ! -d "$DIR_OF_SRC" ]]; then
+    echo "$0: ERROR: parent directory: $DIR_OF_SRC does not exist" 1>&2
+    exit 95
 fi
-export DIRNAME_DEST
-
-# move into the directory of the DEST
-#
+export DIR_OF_SRC
 # warning: Use 'cd ... || exit' or 'cd ... || return' in case cd fails. [SC2164]
 # shellcheck disable=SC2164
-cd "$DIRNAME_DEST" 2>/dev/null
+cd "$DIR_OF_SRC" 2>/dev/null
 status="$?"
 if [[ "$status" -ne "0" ]]; then
-    echo "$0: ERROR: cannot cd parent directory: $DIRNAME_DEST" 1>&2
+    echo "$0: ERROR: cannot cd $DIR_OF_SRC" 1>&2
     exit 96
 fi
 
-# determine the directory of dest
+# determine the directory of src
 #
-# Due to the cd above, the directory of dest is now .
+# Due to the cd above, the directory of src is now .
 #
 if [[ -n $A_FLAG ]]; then
-    DIRNAME_DEST_PATH=$(pwd -P)
+    DIR_OF_SRC_PATH=$(pwd -P)
 else
-    DIRNAME_DEST_PATH="$DIRNAME_DEST"
+    DIR_OF_SRC_PATH="$DIR_OF_SRC"
 fi
-if [[ $DIRNAME_DEST_PATH == "." ]]; then
-    DIRNAME_DEST_PATH=$(pwd)
+if [[ $DIR_OF_SRC_PATH == "." ]]; then
+    DIR_OF_SRC_PATH=$(pwd)
 fi
-export DIRNAME_DEST_PATH
+export DIR_OF_SRC_PATH
 
-# determine the destination name under the current directory
+# determine, under DIR_OF_SRC_PATH what we rsync from
 #
-DEST=$("$BASENAME_PATH" "$DEST")
+FROM=$("$BASENAME_PATH" "$SRC")
 status="$?"
 if [[ "$status" -ne "0" ]]; then
-    echo "$0: ERROR: basename: $BASENAME_PATH of: $DEST failed, exit code: $status" 1>&2
+    echo "$0: ERROR: basename: $BASENAME_PATH of: $SRC failed, exit code: $status" 1>&2
     exit 98
 fi
-export DEST
+if [[ ! -e "$FROM" ]]; then
+    echo "$0: ERROR: $FROM not found under $DIR_OF_SRC_PATH" 1>&2
+    exit 98
+fi
+export FROM
 
 # more debugging
 #
-# If no :dir given in 1st argument ($DIR_PATH is empty):
+# If no :dir given in 2nd argument ($DIR_PATH is empty):
 #
-#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
+#	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DIR_OF_SRC_PATH"
 #
-# If :dir given in 1st argument ($DIR_PATH is not empty):
+# If :dir given in 2nd argument ($DIR_PATH is not empty):
 #
-#	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIR_PATH/ $DEST"
+#	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM/ $USERHOST:$DIR_PATH"
 #
 if [[ -n $I_FLAG ]]; then
+    echo "$0: debug: DIR_OF_SRC=$DIR_OF_SRC" 1>&2
+    echo "$0: debug: DIR_OF_SRC_PATH=$DIR_OF_SRC_PATH" 1>&2
     echo "$0: debug: HOST=$HOST" 1>&2
-    echo "$0: debug: DEST=$DEST" 1>&2
-    echo "$0: debug: DIRNAME_DEST_PATH=$DIRNAME_DEST_PATH" 1>&2
-    echo "$0: debug: DIRNAME_DEST=$DIRNAME_DEST" 1>&2
+    echo "$0: debug: FROM=$FROM" 1>&2
+    echo "$0: debug: SRC=$SRC" 1>&2
     echo "$0: debug: DIR_PATH=$DIR_PATH" 1>&2
-    echo "$0: debug: cd: $DIRNAME_DEST" 1>&2
+    echo "$0: debug: cd: $DIR_OF_SRC" 1>&2
     echo "$0: debug: USERHOST=$USERHOST" 1>&2
     if [[ -z $DIR_PATH ]]; then
-	echo "$0: debug: from: $USERHOST:$DIRNAME_DEST_PATH/$DEST" 1>&2
+	echo "$0: debug: from: $FROM" 1>&2
+	echo "$0: debug: to: $USERHOST:$DIR_OF_SRC_PATH" 1>&2
     else
-	echo "$0: debug: from: $USERHOST:$DIR_PATH/" 1>&2
+	echo "$0: debug: from: $FROM/" 1>&2
+	echo "$0: debug: to: $USERHOST:$DIR_PATH" 1>&2
     fi
-    echo "$0: debug: to: $DIRNAME_DEST/$DEST" 1>&2
 fi
 
-# execute the rsync command
+# construct rsync args
 #
 if [[ -n "$Z_FLAG" ]]; then
     PRE_E_AGS=(-e)
@@ -475,7 +482,7 @@ fi
 RSYNC_ARGS=(-a -S -0 --no-motd)
 if [[ -n "$CAP_C_FLAG" ]]; then
     RSYNC_ARGS+=(-C --exclude=\'.*.swp\')
-fi
+    fi
 if [[ -n "$D_FLAG" ]]; then
     RSYNC_ARGS+=(-d)
 fi
@@ -518,9 +525,9 @@ export PRE_E_AGS E_ARGS RSYNC_ARGS
 #
 if [[ -n "$V_FLAG" ]]; then
     if [[ -z $DIR_PATH ]]; then
-	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIRNAME_DEST_PATH/$DEST ."
+	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM $USERHOST:$DIR_OF_SRC_PATH"
     else
-	echo "cd $DIRNAME_DEST; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $USERHOST:$DIR_PATH/ $DEST"
+	echo "cd $DIR_OF_SRC; $RSYNC_PATH ${PRE_E_AGS[*]} ${E_ARGS[*]} ${RSYNC_ARGS[*]} $FROM/ $USERHOST:$DIR_PATH"
     fi
 fi
 export status="0"
@@ -528,14 +535,14 @@ if [[ -z "$CAP_N_FLAG" ]]; then
     if [[ -z $DIR_PATH ]]; then
 	# warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
 	# shellcheck disable=SC2294
-	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIRNAME_DEST_PATH/$DEST" .
+	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM" "$USERHOST:$DIR_OF_SRC_PATH"
 	status="$?"
-   else
+    else
 	# warning: eval negates the benefit of arrays. Drop eval to preserve whitespace/symbols (or eval as string). [SC2294]
 	# shellcheck disable=SC2294
-	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$USERHOST:$DIR_PATH/" "$DEST"
+	eval "$RSYNC_PATH" "${PRE_E_AGS[*]}" "${E_ARGS[*]}" "${RSYNC_ARGS[*]}" "$FROM/" "$USERHOST:$DIR_PATH"
 	status="$?"
-   fi
+    fi
 fi
 
 # All Done!!! -- Jessica Noll, Age 2
